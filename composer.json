@@ -1,0 +1,16 @@
+{
+    "name": "qcubed/plugins/datatables",
+    "description": "QCubed wrapper for datatables javascript widget.",
+    "type": "library",
+    "keywords": ["qcubed", "datatables"],
+    "license": "MIT",
+    "require": {
+        "php": ">=5.3"
+    },
+    "autoload": {
+        "psr-0": { "": "includes/" }
+    },
+    "extra": {
+        "examples": ["datatables.php"]
+    }
+}

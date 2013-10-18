@@ -1,0 +1,1 @@
+These are extra plugins that are not included with the default datatables installation.
