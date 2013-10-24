@@ -18,7 +18,7 @@ This control is now installable by Composer. To install, add the following to th
 and
 ```
 	"require": {
-		"qcubed/plugins/datatables": "dev-master"
+		"qcubed/plugin/datatables": "dev-master"
 	},
 
 ```

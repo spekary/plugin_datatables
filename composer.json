@@ -1,5 +1,5 @@
 {
-    "name": "qcubed/plugins/datatables",
+    "name": "qcubed/plugin/datatables",
     "description": "QCubed wrapper for datatables javascript widget.",
     "type": "library",
     "keywords": ["qcubed", "datatables"],
