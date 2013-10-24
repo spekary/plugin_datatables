@@ -11,7 +11,7 @@ This control is now installable by Composer. To install, add the following to th
 	"repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/qcubed/QDataTables2"
+            "url": "https://github.com/qcubed/plugin_datatables"
         }
     ],
 ```    
