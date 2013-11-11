@@ -64,7 +64,14 @@
 			$this->ServerParams = null;
 		}
 
-		public function AddAction($objEvent, $objAction) {
+		protected function GetWrapperStyleAttributes($blnIsBlockElement=false) {
+			$strStyle = parent::GetWrapperStyleAttributes($blnIsBlockElement);
+			$strStyle .= 'visibility:hidden;';
+			return $strStyle;
+
+
+
+	public function AddAction($objEvent, $objAction) {
 			if ($objEvent instanceof QDataTable_RowClickEvent) {
 				$objAction = new QNoScriptAjaxAction($objAction);
 			}
@@ -207,19 +214,21 @@
 
 			if ($this->blnFilterOnReturn) {
 				$this->AddPluginJavascriptFile("QDataTables", "/QDataTables/DataTables-1.9.0/plugin-apis/media/js/dataTables.fnFilterOnReturn.js");
-				$strJs .= sprintf('jQuery("#%s").%s().fnFilterOnReturn(); ',
+				$strJS .= sprintf('jQuery("#%s").%s().fnFilterOnReturn(); ',
 						  $this->getJqControlId(),
 						  $this->getJqSetupFunction());
 			}
 
 			if ($this->intFilteringDelay > 0) {
 				$this->AddPluginJavascriptFile("QDataTables", "/QDataTables/DataTables-1.9.0/plugin-apis/media/js/dataTables.fnSetFilteringDelay.js");
-				$strJs .= sprintf('jQuery("#%s").%s().fnSetFilteringDelay(%d); ',
+				$strJS .= sprintf('jQuery("#%s").%s().fnSetFilteringDelay(%d); ',
 						  $this->getJqControlId(),
 						  $this->getJqSetupFunction(),
 						  $this->intFilteringDelay);
 			}
-			
+			$strJS .= sprintf('jQuery("#%s_wrapper").css("visibility","visible"); ',
+				$this->getJqControlId());
+
 			return $strJS;
 		}
 
