@@ -68,10 +68,11 @@
 			$strStyle = parent::GetWrapperStyleAttributes($blnIsBlockElement);
 			$strStyle .= 'visibility:hidden;';
 			return $strStyle;
+		}
 
 
 
-	public function AddAction($objEvent, $objAction) {
+		public function AddAction($objEvent, $objAction) {
 			if ($objEvent instanceof QDataTable_RowClickEvent) {
 				$objAction = new QNoScriptAjaxAction($objAction);
 			}
