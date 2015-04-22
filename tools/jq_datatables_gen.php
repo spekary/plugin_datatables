@@ -1,5 +1,5 @@
 <?php
-require('jq_control.php');
+require(__PHP_ASSETS__ . '/_devtools/_jquery_ui_gen/jq_control.php');
 
 
 class DataTablesJqDoc extends JqDoc

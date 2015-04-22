@@ -105,7 +105,8 @@
 			$objAction = new QNoScriptAjaxAction($objAction);
 			parent::AddAction($objEvent, $objAction);
 		}
-		
+
+
 		/**
 		 * Respond to a data request and return the data object
 		 * Will include row id and row class if those are provided.
@@ -241,9 +242,9 @@
             $strJS = '';
 
             if (!empty ($this->aFixedColumns)) {
-                $this->AddPluginJavascriptFile("datatables", __PLUGIN_ASSETS__ . "/datatables/extras/FixedColumns/media/js/FixedColumns.min.js");
+                $this->AddPluginJavascriptFile("datatables", __PLUGIN_ASSETS__ . "/datatables/extras/FixedColumns/js/dataTables.fixedColumns.js");
                 $strJS .= sprintf("{var oTable = jQuery('#%s').%s();\n", $this->getJqControlId(), $this->getJqSetupFunction());
-                $strJS .= 'new FixedColumns( oTable, ' . JavaScriptHelper::toJsObject($this->aFixedColumns) . '); }';
+                $strJS .= 'new $j.fn.DataTable.FixedColumns( oTable, ' . JavaScriptHelper::toJsObject($this->aFixedColumns) . '); };';
             }
             return $strJS;
         }
