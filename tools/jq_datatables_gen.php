@@ -18,8 +18,8 @@ class DataTablesJqDoc extends JqDoc
         $cnt = count($tbody->children());
         for ($i = 4; $i < $cnt; $i += 2) {
             $row = $tbody->children($i);
-            $name = $row->children(1)->plaintext();
-            $configType = $row->children(2)->plaintext();
+            $name = $row->children(1)->plaintext;
+            $configType = $row->children(2)->plaintext;
             if ($configType == 'Language' || $configType == 'Columns' || $configType == 'API') {
                 // todo: add handling for these types
                 continue;
@@ -34,13 +34,13 @@ class DataTablesJqDoc extends JqDoc
                 continue;
             }
             $origName = $name;
-            $description = $row->children(3)->plaintext();
+            $description = $row->children(3)->plaintext;
 //            $description = preg_replace('/\\s+/', ' ', $description);
             $row = $tbody->children($i+1);
             $detailRows = $row->find('div.column_details table tr');
             if (!$complexObject) {
                 $cells = $detailRows[1]->find('td');
-                $type = $cells[1]->plainText();
+                $type = $cells[1]->plaintext;
                 if (!$type) {
                     $type = 'object';
                 }
@@ -72,8 +72,14 @@ class DataTablesJqDoc extends JqDoc
                 $name = substr($name, 1);
             }
             $name = $this->unique_name($name);
-            $cells = $detailRows[1]->find('td');
-            $defaultValue = $cells[1]->plainText();
+			$defaultValue = null;
+
+			if (isset ($detailRows[2])) {
+				$cells = $detailRows[2]->find('td');
+				$defaultValue = $cells[1]->plaintext;
+				$defaultValue = strtok ($defaultValue, ' ');	// get first word
+			}
+
             $this->options[] = new Option($name, $origName, $type, $defaultValue, $description);
         }
     }
@@ -83,7 +89,7 @@ function jq_datatables_gen()
 {
     $jqControlGen = new JqControlGen();
     $objJqDoc = new DataTablesJqDoc("datatables-reference.html");
-    $jqControlGen->GenerateControl($objJqDoc);
+    $jqControlGen->GenerateControl($objJqDoc, dirname(__FILE__) . '/../includes', dirname(__FILE__) . '/../includes');
 }
 
 jq_datatables_gen();
