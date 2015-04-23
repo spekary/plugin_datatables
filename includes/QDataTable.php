@@ -82,14 +82,73 @@ $this->AddPluginCssFile("datatables", __PLUGIN_ASSETS__ . "/datatables/extras/Ta
 $this->AddPluginCssFile("datatables", __PLUGIN_ASSETS__ . "/datatables/extras/TableTools/media/css/TableTools_JUI.css");
 */
 
-class QDataTable extends QDataTableBase
-	{
-        public function  __construct($objParentObject, $strControlId = null) {
-            parent::__construct($objParentObject, $strControlId);
-            $this->AddPluginJavascriptFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/js/jquery.dataTables.js");
-            $this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables.css");
-            $this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables_themeroller.css");
-        }
 
-    }
+
+class QDataTable extends QDataTableBase
+{
+	public $blnUiActive = true;
+
+	public function  __construct($objParentObject, $strControlId = null) {
+		parent::__construct($objParentObject, $strControlId);
+		$this->AddPluginJavascriptFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/js/jquery.dataTables.js");
+		$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables.css");
+		$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables_themeroller.css");
+
+		$this->AddJavascriptFile(__APP_JS_ASSETS__ . "/datatables/api/fnReloadAjax.js");
+	}
+
+	public function GetControlJavaScript() {
+		if ($this->blnUiActive) {
+			return parent::GetControlJavaScript();
+		}
+		else {
+			return 	'';
+		}
+	}
+
+	protected function GetWrapperStyleAttributes($blnIsBlockElement=false) {
+		if ($this->blnUiActive) {
+			return parent::GetWrapperStyleAttributes($blnIsBlockElement);
+		}
+		else {
+			return QDataTableGen::GetWrapperStyleAttributes($blnIsBlockElement);
+		}
+	}
+
+	/**
+	 * Use built-in datatables refresher to avoid screen flash.
+	 */
+
+	public function Refresh() {
+		if ($this->blnUseAjax) {
+			QApplication::ExecuteJavaScript(sprintf ('jQuery("#%s").%s().fnReloadAjax();', $this->getJqControlId(), $this->getJqSetupFunction()));
+		}
+		else {
+			parent::Refresh();
+		}
+	}
+
+	public function RenderAjax($blnDisplayOutput = true) {
+		// Only render if this control has been modified at all
+		if ($this->blnUseAjax) {
+
+			if ($this->IsModified()) {
+
+				// Render if (1) object has no parent or (2) parent was not rendered nor currently being rendered
+				if ((!$this->objParentControl) || ((!$this->objParentControl->Rendered) && (!$this->objParentControl->Rendering))) {
+					$this->Refresh();
+					$this->blnModified = false;
+					if ($this->objWatcher) {
+						$this->objWatcher->MakeCurrent();
+					}
+				}
+			}
+			// The following line is to suppres the warning in PhpStorm
+			return '';
+		}
+		return parent::RenderAjax($blnDisplayOutput); // rendering by ajax, but the control itself is not using ajax only. In other words, ajax wants a complete redraw.
+	}
+
+
+}
 ?>
