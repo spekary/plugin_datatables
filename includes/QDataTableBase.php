@@ -19,8 +19,6 @@
 	 * @property-read QQClause[] $Clauses
 	 * @property int $FilteredItemCount
 	 * @property int $TotalItemCount
-	 * @property boolean $FilterOnReturn
-	 * @property int $FilteringDelay
 	 * @property array $FixedColumns Array of options for fixed column plugin. FixedColumns gives you
 	 *  a way to do something very similar to Freeze Panes in Excel. If you are only freezing the 
 	 *  headers, datatables recommends using the FixedHeaders plugin instead.
@@ -43,11 +41,9 @@
 		protected $objLimitInfo;
 		protected $objClauses;
 		protected $strFilter;
-		protected $intEcho = null;
+		protected $intDrawCount = null;
 		protected $intTotalItemCount = 0;
 		protected $intFilteredItemCount = 0;
-		protected $blnFilterOnReturn = false;
-		protected $intFilteringDelay = 0;
 		protected $aFixedColumns = null;
 		protected $blnUseMData = false;
 
@@ -59,9 +55,6 @@
 			
 			// default to not use ajax
 			$this->UseAjax = false;
-			$this->ServerSide = false;
-			$this->AjaxSource = null;
-			$this->ServerParams = null;
 		}
 
 		protected function GetWrapperStyleAttributes($blnIsBlockElement=false) {
@@ -83,11 +76,10 @@
 			$this->blnUseAjax = true;
 			$this->ServerSide = true;
 			$this->blnModified = true;
-			$this->AjaxSource = $_SERVER["SCRIPT_NAME"];	// will be ignored
-			
+
 			
 			$strBody = '';
-			$strJsReturnParam = 'aoData'; // put all of aodata into the action parameter
+			$strJsReturnParam = 'oData'; // put all of data and settings into the action parameter
 			
 			$objAction = new QAjaxControlAction($this, '_GetAjaxData', 'default', null, $strJsReturnParam);
 			
@@ -96,10 +88,12 @@
 			// empty action to tie the action to the data binder method name
 			$objEvent = new QAutocomplete_SourceEvent();
 			$objAction->Event = $objEvent;
-			$strBody = "\n" . 'this.data("response",fnCallback);' . "\n";	// fnCallback is a javascript closure, and we have to save it to use it later.
+			$strBody = "\n" .
+				sprintf('$j("#%s").data("dtResponse",callback);', $this->getJqControlId())
+				. "\n";	// fnCallback is a javascript closure, and we have to save it to use it later.
 						//$strBody = 'var aNewData; aoData.each(function(a){aNewData[a["name"]] = a["value"]}); ' . "\n"; // fix quirky format of aoData
 			$strBody .= $objAction->RenderScript($this);
-			$this->ServerData = new QJsClosure($strBody, array('sSource', 'aoData', 'fnCallback', 'oSettings'));
+			$this->Ajax = new QJsClosure($strBody, array('oData', 'callback', 'oSettings'));
 					
 			$this->RemoveAllActions(QAutocomplete_SourceEvent::EventName);
 			$objAction = new QNoScriptAjaxAction($objAction);
@@ -117,51 +111,49 @@
 		public function _GetAjaxData($strFormId, $strControlId, $strParameter) {
 			$this->objClauses = array();
 			$this->strFilter = null;
-			$this->intEcho = null;
-			
-			// Use info sent from datatable control
-			$aParams = array();
-			foreach ($strParameter as $a) {
-				$aParams[$a['name']] = $a['value']; // deal with funky format of aoData
-			}
-			
+			$this->intDrawCount = null;
+
+
+			$data = $strParameter;
+
 			// Set limit info for partial data requests
-			if (isset ($aParams['iDisplayStart']) && 
-					isset ($aParams['iDisplayLength']) && 
-					$aParams['iDisplayLength'] != '-1') {
-				$intOffset = QType::Cast($aParams['iDisplayStart'], QType::Integer);
-				$intMaxRowCount = QType::Cast($aParams['iDisplayLength'], QType::Integer);
+			if (isset ($data['start']) &&
+					isset ($data['length']) &&
+					$data['length'] != '-1') {
+				$intOffset = QType::Cast($data['start'], QType::Integer);
+				$intMaxRowCount = QType::Cast($data['length'], QType::Integer);
 				$this->objLimitInfo = QQ::LimitInfo($intMaxRowCount, $intOffset);
 			}
-			if (isset($aParams['iSortCol_0'])) {
-				$intSortColsCount = QType::Cast($aParams['iSortingCols'], QType::Integer);
-				for ($i = 0; $i < $intSortColsCount; $i++) {
-					$intSortColIdx = QType::Cast($aParams['iSortCol_' . $i], QType::Integer);
-					$blnSortCol = QType::Cast($aParams['bSortable_' . $intSortColIdx], QType::Boolean);
-					if ($blnSortCol) {
-						$objColumn = $this->GetColumn($intSortColIdx);
-						$strSortDir = QType::Cast($aParams['sSortDir_' . $i], QType::String);
-						if (strtolower($strSortDir) == 'desc') {
-							if ($objColumn->ReverseOrderByClause) {
-								$this->objClauses[] = $objColumn->ReverseOrderByClause;
-							}
-						} else {
-							if ($objColumn->OrderByClause) {
-								$this->objClauses[] = $objColumn->OrderByClause;
-							}
+			if (isset($data['order'])) {
+				$sortCols = $data['order'];
+				$intSortColsCount = count($sortCols);
+				// We only support ordering by one column at this point
+				//for ($i = 0; $i < $intSortColsCount; $i++) {
+					$i = 0;
+					$intSortColIdx = QType::Cast($sortCols[$i]['column'], QType::Integer);
+					$objColumn = $this->GetColumn($intSortColIdx);
+					$strSortDir = QType::Cast($sortCols[$i]['dir'], QType::String);
+					if (strtolower($strSortDir) == 'desc') {
+						if ($objColumn->ReverseOrderByClause) {
+							$this->objClauses[] = $objColumn->ReverseOrderByClause;
+						}
+					} else {
+						if ($objColumn->OrderByClause) {
+							$this->objClauses[] = $objColumn->OrderByClause;
 						}
 					}
-				}
+				//}
 			}
-			if (isset($aParams['sSearch'])) {
-				$this->strFilter = QType::Cast($aParams['sSearch'], QType::String);
+			if (isset($data['search']['value'])) {
+				// TODO: Support RegEx searching
+				$this->strFilter = QType::Cast($data['search']['value'], QType::String);
 			}
-			if (isset($aParams['sEcho'])) {
-				$this->intEcho = QType::Cast($aParams['sEcho'], QType::Integer);
+			if (isset($data['draw'])) {
+				$this->intDrawCount = QType::Cast($data['draw'], QType::Integer);
 			}
 		
 			// Get the data and send it back to the control
-			if (!is_null($this->intEcho)) {		// Required drawing count, aids in helping control keep track of ajax responses
+			if (!is_null($this->intDrawCount)) {		// Required drawing count, aids in helping control keep track of ajax responses
 				$this->DataBind();
 				$mixDataArray = array();
 				if ($this->objDataSource) {
@@ -180,22 +172,22 @@
 					$filteredCount = count($mixDataArray);
 				}
 				$output = array(
-					"sEcho" => $this->intEcho,
-					"iTotalRecords" => $this->TotalItemCount,
-					"iTotalDisplayRecords" => $filteredCount,
-					"aaData" => $mixDataArray
+					"draw" => $this->intDrawCount,
+					"recordsTotal" => $this->TotalItemCount,
+					"recordsFiltered" => $filteredCount,
+					"data" => $mixDataArray
 				);
 				
 				$output = JavaScriptHelper::toJsObject($output);
-				$strJS = sprintf('var oTable = $j("#%s").%s();oTable.data("response")(%s);', $this->ControlId, $this->getJqSetupFunction(), $output);
-				QApplication::ExecuteJavaScript($strJS, true);
+				$strJS = sprintf('var oTable = $j("#%s");oTable.data("dtResponse")(%s);', $this->ControlId, $output);
+				QApplication::ExecuteJavaScript($strJS,QJsPriority::Exclusive);
 				$this->objDataSource = null;
-				$this->intEcho = null;
+				$this->intDrawCount = null;
 			}
 		}
 
 		public function DataBind() {
-			if ($this->blnUseAjax && !$this->intEcho) {
+			if ($this->blnUseAjax && !$this->intDrawCount) {
 				return;	// only draw when asked to draw by the datatable
 			}
 			parent::DataBind();
@@ -214,20 +206,6 @@
 
             $strJS .= $this->RenderPlugins();
 
-			if ($this->blnFilterOnReturn) {
-				$this->AddPluginJavascriptFile("QDataTables", "/QDataTables/DataTables-1.9.0/plugin-apis/media/js/dataTables.fnFilterOnReturn.js");
-				$strJS .= sprintf('jQuery("#%s").%s().fnFilterOnReturn(); ',
-						  $this->getJqControlId(),
-						  $this->getJqSetupFunction());
-			}
-
-			if ($this->intFilteringDelay > 0) {
-				$this->AddPluginJavascriptFile("QDataTables", "/QDataTables/DataTables-1.9.0/plugin-apis/media/js/dataTables.fnSetFilteringDelay.js");
-				$strJS .= sprintf('jQuery("#%s").%s().fnSetFilteringDelay(%d); ',
-						  $this->getJqControlId(),
-						  $this->getJqSetupFunction(),
-						  $this->intFilteringDelay);
-			}
 			$strJS .= sprintf('jQuery("#%s_wrapper").css("visibility","visible"); ',
 				$this->getJqControlId());
 
@@ -271,6 +249,8 @@
 			if ($strId = $this->GetRowId($objObject, $rowIndex)) {
 				$row['DT_RowId'] = $strId;
 			}
+
+			// TODO: Implement data and attributes
 			return $row;
 		}
 		
@@ -323,6 +303,31 @@
 			return $rowArray;
 		}
 
+		/**
+		 * @param bool $blnDisplayOutput
+		 * @return array[]|string
+		 */
+		public function RenderAjax($blnDisplayOutput = true) {
+			// Only render if this control has been modified at all
+			if ($this->blnUseAjax) {
+
+				if ($this->IsModified()) {
+
+					// Render if (1) object has no parent or (2) parent was not rendered nor currently being rendered
+					if ((!$this->objParentControl) || ((!$this->objParentControl->Rendered) && (!$this->objParentControl->Rendering))) {
+						$this->Refresh();
+						$this->blnModified = false;
+						if ($this->objWatcher) {
+							$this->objWatcher->MakeCurrent();
+						}
+					}
+				}
+				// The following line is to suppres the warning in PhpStorm
+				return '';
+			}
+			return parent::RenderAjax($blnDisplayOutput); // rendering by ajax, but the control itself is not using ajax only. In other words, ajax wants a complete redraw.
+		}
+
 		public function __get($strName) {
 			switch ($strName) {
 				case "FilterString": return $this->strFilter;
@@ -330,8 +335,6 @@
 				case "Clauses": return $this->objClauses;
 				case "FilteredItemCount": return $this->intTotalItemCount;
 				case "TotalItemCount": return $this->intTotalItemCount;
-				case "FilterOnReturn": return $this->blnFilterOnReturn;
-				case "FilteringDelay": return $this->intFilteringDelay;
 				case "FixedColumns": return $this->aFixedColumns;
 				default:
 					try {
@@ -368,23 +371,6 @@
 						throw $objExc;
 					}
 
-				case "FilterOnReturn":
-					try {
-						$this->blnFilterOnReturn = QType::Cast($mixValue, QType::Boolean);
-						break;
-					} catch (QInvalidCastException $objExc) {
-						$objExc->IncrementOffset();
-						throw $objExc;
-					}
-
-				case "FilteringDelay":
-					try {
-						$this->intFilteringDelay = QType::Cast($mixValue, QType::Integer);
-						break;
-					} catch (QInvalidCastException $objExc) {
-						$objExc->IncrementOffset();
-						throw $objExc;
-					}
 
 				case 'FixedColumns':
 					$this->aFixedColumns = $mixValue;
