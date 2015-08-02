@@ -33,8 +33,6 @@
  *
  */
 
-// The dataTables javascript plugin is being setup by its author to be composer installable
-
 /* Extras that still need to be added. If you do, consider adding it to the Base file and
  * sending the change to us so we can incorporate it into the plugin. See
  * FixedColumns for an example. */
@@ -86,16 +84,21 @@ $this->AddPluginCssFile("datatables", __PLUGIN_ASSETS__ . "/datatables/extras/Ta
 
 class QDataTable extends QDataTableBase
 {
-	public $blnUiActive = true;
+	//public $blnUiActive = false;
 
 	public function  __construct($objParentObject, $strControlId = null) {
 		parent::__construct($objParentObject, $strControlId);
 		$this->AddPluginJavascriptFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/js/jquery.dataTables.js");
 		$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables.css");
-		$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables_themeroller.css");
 
-		$this->AddJavascriptFile(__APP_JS_ASSETS__ . "/datatables/api/fnReloadAjax.js");
+		//JQuery UI Themeroller integration
+		//See DataTables documentation for other integrations
+		$this->AddCssFile("//cdn.datatables.net/plug-ins/1.10.7/integration/jqueryui/dataTables.jqueryui.css");
+		$this->AddJavascriptFile("//cdn.datatables.net/plug-ins/1.10.7/integration/jqueryui/dataTables.jqueryui.js");
+
 	}
+
+	/*
 
 	public function GetControlJavaScript() {
 		if ($this->blnUiActive) {
@@ -114,14 +117,15 @@ class QDataTable extends QDataTableBase
 			return QDataTableGen::GetWrapperStyleAttributes($blnIsBlockElement);
 		}
 	}
-
+	*/
+	
 	/**
 	 * Use built-in datatables refresher to avoid screen flash.
 	 */
 
 	public function Refresh() {
 		if ($this->blnUseAjax) {
-			QApplication::ExecuteJavaScript(sprintf ('jQuery("#%s").%s().fnReloadAjax();', $this->getJqControlId(), $this->getJqSetupFunction()));
+			//QApplication::ExecuteJavaScript(sprintf ('jQuery("#%s").%s().fnReloadAjax();', $this->getJqControlId(), $this->getJqSetupFunction()));
 		}
 		else {
 			parent::Refresh();
@@ -143,7 +147,7 @@ class QDataTable extends QDataTableBase
 					}
 				}
 			}
-			// The following line is to suppres the warning in PhpStorm
+			// The following line is to suppress the warning in PhpStorm
 			return '';
 		}
 		return parent::RenderAjax($blnDisplayOutput); // rendering by ajax, but the control itself is not using ajax only. In other words, ajax wants a complete redraw.
@@ -151,4 +155,3 @@ class QDataTable extends QDataTableBase
 
 
 }
-?>
