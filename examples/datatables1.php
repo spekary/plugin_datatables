@@ -10,7 +10,6 @@
 			$this->dtgTable->CreateIndexedColumn('Name', 'name');
 			$this->dtgTable->CreateIndexedColumn('Height', 'height');
 			$this->dtgTable->CreateIndexedColumn('Weight', 'weight');
-			$this->dtgTable->UseAjax = true;
 		}
 
 		protected function BindData() {
