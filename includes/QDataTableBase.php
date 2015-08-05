@@ -39,7 +39,7 @@
 	 */
 	class QDataTableBase extends QDataTableGen {
 		protected $objLimitInfo;
-		protected $objClauses;
+		protected $objOrderByClause;
 		protected $strFilter;
 		protected $intDrawCount = null;
 		protected $intTotalItemCount = 0;
@@ -109,7 +109,7 @@
 		 * @param string $strParameter
 		 */
 		public function _GetAjaxData($strFormId, $strControlId, $strParameter) {
-			$this->objClauses = array();
+			$this->objOrderByClause = null;
 			$this->strFilter = null;
 			$this->intDrawCount = null;
 
@@ -135,11 +135,11 @@
 					$strSortDir = QType::Cast($sortCols[$i]['dir'], QType::String);
 					if (strtolower($strSortDir) == 'desc') {
 						if ($objColumn->ReverseOrderByClause) {
-							$this->objClauses[] = $objColumn->ReverseOrderByClause;
+							$this->objOrderByClause = $objColumn->ReverseOrderByClause;
 						}
 					} else {
 						if ($objColumn->OrderByClause) {
-							$this->objClauses[] = $objColumn->OrderByClause;
+							$this->objOrderByClause = $objColumn->OrderByClause;
 						}
 					}
 				//}
@@ -331,8 +331,8 @@
 		public function __get($strName) {
 			switch ($strName) {
 				case "FilterString": return $this->strFilter;
-				case "LimitInfo": return $this->objLimitInfo;
-				case "Clauses": return $this->objClauses;
+				case "LimitClause": return $this->objLimitInfo;
+				case "OrderByClause": return $this->objOrderByClause;
 				case "FilteredItemCount": return $this->intTotalItemCount;
 				case "TotalItemCount": return $this->intTotalItemCount;
 				case "FixedColumns": return $this->aFixedColumns;
