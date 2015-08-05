@@ -15,7 +15,15 @@
 		}
 
 		protected function BindData() {
-			$objCondition = QQ::All();
+			if ($strFilter = $this->dtgTable->FilterString) {
+				$objCondition = QQ::OrCondition(
+					QQ::Like(QQN::Person()->FirstName, '%' . $strFilter . '%'),
+					QQ::Like(QQN::Person()->LastName, '%' . $strFilter . '%')
+				);
+			}
+			else {
+				$objCondition = QQ::All();
+			}
 			$this->dtgTable->TotalItemCount = Person::QueryCount ($objCondition);
 			$objClauses[] = $this->dtgTable->OrderByClause;
 			$objClauses[] = $this->dtgTable->LimitClause;
