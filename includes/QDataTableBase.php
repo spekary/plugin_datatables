@@ -40,7 +40,6 @@
 	class QDataTableBase extends QDataTableGen {
 		protected $objLimitInfo;
 		protected $objOrderByClause;
-		protected $strFilter;
 		protected $intDrawCount = null;
 		protected $intTotalItemCount = 0;
 		protected $intFilteredItemCount = 0;
@@ -110,7 +109,6 @@
 		 */
 		public function _GetAjaxData($strFormId, $strControlId, $strParameter) {
 			$this->objOrderByClause = null;
-			$this->strFilter = null;
 			$this->intDrawCount = null;
 
 
@@ -120,9 +118,9 @@
 			if (isset ($data['start']) &&
 					isset ($data['length']) &&
 					$data['length'] != '-1') {
-				$intOffset = QType::Cast($data['start'], QType::Integer);
-				$intMaxRowCount = QType::Cast($data['length'], QType::Integer);
-				$this->objLimitInfo = QQ::LimitInfo($intMaxRowCount, $intOffset);
+				$this->intDisplayStart = QType::Cast($data['start'], QType::Integer);
+				$this->intPageLength = QType::Cast($data['length'], QType::Integer);
+				$this->objLimitInfo = QQ::LimitInfo($this->intPageLength, $this->intDisplayStart);
 			}
 			if (isset($data['order'])) {
 				$sortCols = $data['order'];
@@ -142,12 +140,32 @@
 							$this->objOrderByClause = $objColumn->OrderByClause;
 						}
 					}
+
+					// Save so that if table is redrawn, order will be preserved.
+					$this->arrOrder = [];
+					$this->arrOrder[] = [$intSortColIdx, $strSortDir];
 				//}
 			}
 			if (isset($data['search']['value'])) {
-				// TODO: Support RegEx searching
-				$this->strFilter = QType::Cast($data['search']['value'], QType::String);
+				// TODO: Support RegEx searching. Will require implementing regex in database adapters. Will take work.
+				$this->mixSearch = [];
+				$this->mixSearch['search'] = QType::Cast($data['search']['value'], QType::String);
 			}
+
+			// If column level searching is enabled, save off values
+			$this->arrSearchCols = null;
+			if (!empty($data['columns'])) {
+				$this->arrSearchCols = [];
+				foreach ($data['columns'] as $key=>$values) {
+					if (!empty($values['searchable'])) {
+						$this->arrSearchCols[$key]['search'] = $values['search']['value'];
+						// TODO: Deal with the regex flag
+					} else {
+						$this->arrSearchCols[$key]['search'] = null;
+					}
+				}
+			}
+
 			if (isset($data['draw'])) {
 				$this->intDrawCount = QType::Cast($data['draw'], QType::Integer);
 			}
@@ -167,7 +185,7 @@
 						$mixDataArray[] = $row;
 					}
 				}
-				$filteredCount = $this->strFilter ? $this->FilteredItemCount : $this->TotalItemCount;
+				$filteredCount = $this->mixSearch ? $this->FilteredItemCount : $this->TotalItemCount;
 				if (!$filteredCount || $filteredCount < count($mixDataArray)) {
 					$filteredCount = count($mixDataArray);
 				}
@@ -179,7 +197,7 @@
 				);
 				
 				$output = JavaScriptHelper::toJsObject($output);
-				$strJS = sprintf('var oTable = $j("#%s");oTable.data("dtResponse")(%s);', $this->ControlId, $output);
+				$strJS = sprintf('$j("#%s").data("dtResponse")(%s);', $this->ControlId, $output);
 				QApplication::ExecuteJavaScript($strJS,QJsPriority::Exclusive);
 				$this->objDataSource = null;
 				$this->intDrawCount = null;
@@ -243,14 +261,27 @@
 					$row[] = $data;
 				}
 			}
-			if ($strClass = $this->GetRowClass($objObject, $rowIndex)) {
-				$row['DT_RowClass'] = $strClass;
-			}
-			if ($strId = $this->GetRowId($objObject, $rowIndex)) {
-				$row['DT_RowId'] = $strId;
+
+			// Datatables only supports certain attributes in the row tag. Pull those out and build them into the data if available.
+			$params = $this->GetRowParams($objObject, $rowIndex);
+			if ($params) {
+				foreach ($params as $key=>$value) {
+					if ($key == 'class') {
+						$row['DT_RowClass'] = $value;
+					}
+					if ($key == 'id') {
+						$row['DT_RowId'] = $strId;
+					}
+					if (strpos($key, 'data-') === 0) {
+						$dataParams[substr($key, 5)] = $value;
+					}
+				}
+
+				if (!empty($dataParams)) {
+					$row['DT_RowData'] = $dataParams;
+				}
 			}
 
-			// TODO: Implement data and attributes
 			return $row;
 		}
 		
@@ -272,6 +303,10 @@
 		/**
 		 * Sets up the aoColumns object to match the columns. Not used by default. Call after you initialize,
 		 * but before you draw. You can use this to setup some very elaborate data access mechanisms and column styling.
+		 *
+		 * TODO: This is for the old version of Datatables. Need to port the implementation to the new version.
+		 *
+		 * @deprecated
 		 * @link http://datatables.net/usage/columns
 		 * @link http://datatables.net/blog/Extended_data_source_options_with_DataTables
 		 */
@@ -304,8 +339,23 @@
 		}
 
 		/**
+		 * Use built-in datatables refresher to avoid screen flash.
+		 */
+
+		public function Refresh() {
+			if ($this->blnUseAjax) {
+				// Trigger a refresh using the datatables refresh method
+				QApplication::ExecuteControlCommand($this->getJqControlId(), $this->getJqSetupFunction(), 'draw', QJsPriority::Low);
+}
+			else {
+				parent::Refresh();
+			}
+		}
+
+
+		/**
 		 * @param bool $blnDisplayOutput
-		 * @return array[]|string
+		 * @return array[]
 		 */
 		public function RenderAjax($blnDisplayOutput = true) {
 			// Only render if this control has been modified at all
@@ -315,22 +365,76 @@
 
 					// Render if (1) object has no parent or (2) parent was not rendered nor currently being rendered
 					if ((!$this->objParentControl) || ((!$this->objParentControl->Rendered) && (!$this->objParentControl->Rendering))) {
-						$this->Refresh();
+						$this->Refresh();	// Tells datatables to call back to us to get raw row data. See above.
 						$this->blnModified = false;
 						if ($this->objWatcher) {
 							$this->objWatcher->MakeCurrent();
 						}
 					}
 				}
-				// The following line is to suppres the warning in PhpStorm
-				return '';
+				return [];	// don't render in the usual way
 			}
 			return parent::RenderAjax($blnDisplayOutput); // rendering by ajax, but the control itself is not using ajax only. In other words, ajax wants a complete redraw.
 		}
 
+		/**
+		 * @param string $strClass
+		 * @return QDataTable_CodeGenerator
+		 */
+		public static function GetCodeGenerator($strClass = 'QDataTable') {
+			return new QDataTable_CodeGenerator($strClass);
+		}
+
+		/**
+		 * Returns the current state of the control to be able to restore it later.
+		 * @return mixed
+		 */
+		public function GetState() {
+			$state = array();
+			if ($this->mixSearch !== null) {
+				$state["search"] = $this->mixSearch;
+			}
+			if ($this->arrSearchCols !== null) {
+				$state["searchCols"] = $this->arrSearchCols;
+			}
+			if ($this->arrOrder !== null) {
+				$state["order"] = $this->arrOrder;
+			}
+			if ($this->intDisplayStart !== null) {
+				$state["displayStart"] = $this->intDisplayStart;
+			}
+			if ($this->intPageLength !== null) {
+				$state["pageLength"] = $this->intPageLength;
+			}
+
+			return $state;
+		}
+
+		/**
+		 * Restore the state of the control.
+		 * @param mixed $state Previously saved state as returned by GetState above.
+		 */
+		public function PutState($state) {
+			// use the name as the column key because columns might be added or removed for some reason
+			if (isset ($state["search"])) {
+				$this->mixSearch = $state["search"];
+			}
+			if (isset ($state["searchCols"])) {
+				$this->arrSearchCols = $state["searchCols"];
+			}
+			if (isset ($state["order"])) {
+				$this->arrOrder = $state["order"];
+			}
+			if (isset ($state["displayStart"])) {
+				$this->intDisplayStart = $state["displayStart"];
+			}
+			if (isset ($state["pageLength"])) {
+				$this->intPageLength = $state["pageLength"];
+			}
+		}
+
 		public function __get($strName) {
 			switch ($strName) {
-				case "FilterString": return $this->strFilter;
 				case "LimitClause": return $this->objLimitInfo;
 				case "OrderByClause": return $this->objOrderByClause;
 				case "FilteredItemCount": return $this->intTotalItemCount;
@@ -346,8 +450,6 @@
 			}
 		}
 		public function __set($strName, $mixValue) {
-			$this->blnModified = true;
-			
 			switch ($strName) {
 				case "TotalItemCount":
 					try {
@@ -377,7 +479,6 @@
 					break;
 					
 				case 'DataSource':
-					$this->blnModified = false; // don't modify, since we only do this during drawing, and it will cause multiple redraws
 					return ($this->objDataSource = $mixValue);
 					
 				case 'UseAjax':
