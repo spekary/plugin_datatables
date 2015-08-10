@@ -148,7 +148,9 @@
 			}
 			if (isset($data['search']['value'])) {
 				// TODO: Support RegEx searching. Will require implementing regex in database adapters. Will take work.
-				$this->mixSearch = [];
+				if (!is_array($this->mixSearch)) {
+					$this->mixSearch = [];
+				}
 				$this->mixSearch['search'] = QType::Cast($data['search']['value'], QType::String);
 			}
 
