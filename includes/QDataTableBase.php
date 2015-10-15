@@ -208,7 +208,7 @@
             $strJS .= $this->RenderPlugins();
 
 			$strJS .= sprintf('jQuery("#%s_wrapper").css("visibility","visible"); ',
-				$this->getJqControlId());
+				$this->getJqControlId());	// show the table, to prevent data flashing
 
 			return $strJS;
 		}

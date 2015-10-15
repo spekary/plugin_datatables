@@ -9,7 +9,7 @@
         "datatables/datatables": "dev-master"
     },
     "autoload": {
-        "psr-0": { "": "includes/" }
+        "psr-4": { "QCubed\\Plugin\\": "includes/" }
     },
     "extra": {
         "examples": ["datatables1.php", "datatables2.php"]
