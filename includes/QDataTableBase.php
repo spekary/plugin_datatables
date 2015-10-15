@@ -5,10 +5,6 @@
  *
  */
 
-	class QDataTable_RowClickEvent extends QEvent {
-		const EventName = 'QDataTable_RowClickEvent';
-	}
-		
 	class QDataTable_SourceEvent extends QEvent {
 		const EventName = 'QDataTable_SourceEvent';
 	}
@@ -63,14 +59,6 @@
 		}
 
 
-
-		public function AddAction($objEvent, $objAction) {
-			if ($objEvent instanceof QDataTable_RowClickEvent) {
-				$objAction = new QNoScriptAjaxAction($objAction);
-			}
-			parent::AddAction($objEvent, $objAction);
-		}
-			
 		public function SetupAjaxBinding() {
 			$this->blnUseAjax = true;
 			$this->ServerSide = true;
@@ -214,13 +202,6 @@
 		}
 		
 		public function GetControlJavaScript() {
-			// add row click handling
-			// use a temporary ajax action with JsReturnParam to generate the ajax script for us
-			$strJsReturnParam = sprintf("jQuery('#%s').%s().fnGetData(this)", $this->getJqControlId(), $this->getJqSetupFunction()); // 'this' is the row; fnGetData(this) returns the data for the row
-			$action = new QAjaxAction('', 'default', null, $strJsReturnParam);
-			$action->Event = new QDataTable_RowClickEvent();
-			$strJsBody = $action->RenderScript($this);
-
 			$strJS = parent::GetControlJavaScript();
 			$strJS .= ".on('click', 'tbody tr', function () { $strJsBody })\n";
 
