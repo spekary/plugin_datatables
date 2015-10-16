@@ -48,7 +48,7 @@
 			$this->JQueryUI = true;
 			$this->UseWrapper = true;	// required since additional dom elements may be inserted above the table
 			
-			// default to not use ajax
+			// default to use ajax
 			$this->UseAjax = false;
 		}
 
@@ -203,7 +203,6 @@
 		
 		public function GetControlJavaScript() {
 			$strJS = parent::GetControlJavaScript();
-			$strJS .= ".on('click', 'tbody tr', function () { $strJsBody })\n";
 
             $strJS .= $this->RenderPlugins();
 
@@ -365,7 +364,7 @@
 		 * @return QDataTable_CodeGenerator
 		 */
 		public static function GetCodeGenerator($strClass = 'QDataTable') {
-			return new QDataTable_CodeGenerator($strClass);
+			return new QDataTableCodeGenerator($strClass);
 		}
 
 		/**

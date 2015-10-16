@@ -3,7 +3,7 @@
  * Code generator for the DataGrid2 object.
  */
 
-class QDataTable_CodeGenerator extends QControl_CodeGenerator {
+class QDataTableCodeGenerator extends QControl_CodeGenerator {
 	/** @var  string */
 	protected $strControlClassName;
 
@@ -121,6 +121,7 @@ TMPL;
 		// Set a generic data binder.
 		// Set to BindData if you want to do more custom data binding
 		\$this->SetDataBinder('DefaultDataBinder', \$this);
+		\$this->UseAjax = true;
 		\$this->Watch(QQN::{$objTable->ClassName}());
 	}
 
@@ -135,6 +136,9 @@ TMPL;
 		$strVarName = $objCodeGen->DataListVarName($objTable);
 
 		$strCode = <<<TMPL
+	/**
+	 * Creates the columns for the table. Override to change the columns, or use the ModelEditorDialog to turn on and off individual columns.
+	 */
 	protected function CreateColumns() {
 
 TMPL;
@@ -178,8 +182,8 @@ TMPL;
 	protected function GenerateSubclassPrivateDataBinder(QCodeGenBase $objCodeGen, QTable $objTable) {
 		$strCode = <<<TMPL
    /**
-	* Calls the data finder with default options. Override and call BindData with additional conditions or clauses as needed, or
-	* call you own custom data binder.
+	* Calls the data binder with default options. Override and call BindData with additional conditions or clauses as needed, or
+	* call your own custom data binder.
 	**/
 	public function DefaultDataBinder() {
 		\$this->BindData(null, null);
@@ -193,6 +197,9 @@ TMPL;
 	protected function GenerateSubclassPublicDataBinder(QCodeGenBase $objCodeGen, QTable $objTable) {
 		$strObjectType = $objTable->ClassName;
 		$strCode = <<<TMPL
+   /**
+	* Called by the framework to access the data for the control and load it into the table.
+	**/
 	public function BindData(\$objAdditionalCondition = null, \$objAdditionalClauses = null) {
 		\$objCondition = \$this->GetCondition(\$objAdditionalCondition);
 		\$objClauses = \$this->GetClauses(\$objAdditionalClauses);
@@ -202,7 +209,7 @@ TMPL;
 
 		// If a column is selected to be sorted, and if that column has a OrderByClause set on it, then let's add
 		// the OrderByClause to the \$objClauses array
-		if (\$objClause = \$this->OrderByClause) {
+		if (\$objClause = \$this->objOrderByClause) {
 			\$objClauses[] = \$objClause;
 		}
 
@@ -234,6 +241,8 @@ TMPL;
 	 * @return QQCondition
 	 */
 	protected function GetCondition(\$objAdditionalCondition = null) {
+		\$strSearchValue = \$this->mixSearch['search'];
+
 
 TMPL;
 
@@ -252,10 +261,10 @@ TMPL;
 		$strCondition = implode (",\n            ", $cond);
 		if ($strCondition) {
 			$strCondition = "QQ::OrCondition(
-				{$strCondition}
+			{$strCondition}
 			)";
 			$strCode .=
-'		$objCondition = ' . $strCondition;
+'		$objCondition = ' . $strCondition . ";";
 		} else {
 			$strCode .=
 '		$objCondition = QQ::All()';
@@ -263,6 +272,8 @@ TMPL;
 		}
 
 		$strCode .= <<<TMPL
+
+
 		// Get passed in condition, possibly coming from subclass or enclosing control or form
 		if (\$objAdditionalCondition) {
 			\$objCondition = QQ::AndCondition(\$objCondition, \$objAdditionalCondition);
@@ -297,7 +308,6 @@ TMPL;
 		if (\$this->objClauses) {
 			\$objClauses = array_merge(\$objClauses, \$this->objClauses);
 		}
-
 		return \$objClauses;
 	}
 
@@ -411,6 +421,9 @@ TMPL;
 		$strVarName = $objCodeGen->DataListVarName($objTable);
 
 		$strCode = <<<TMPL
+   /**
+	* Creates the data table and prepares it to be row clickable. Override for additional creation operations.
+	**/
 	protected function {$strVarName}_Create() {
 		\$this->{$strVarName} = new {$strPropertyName}List(\$this);
 		\$this->{$strVarName}_AddActions();
@@ -436,40 +449,6 @@ TMPL;
 		return $strCode;
 	}
 
-	protected function GenerateCreateColumns(QCodeGenBase $objCodeGen, QTable $objTable) {
-		$strVarName = $objCodeGen->DataListVarName($objTable);
-
-		$strCode = <<<TMPL
-	protected function {$strVarName}_CreateColumns() {
-
-TMPL;
-
-		foreach ($objTable->ColumnArray as $objColumn) {
-			if (isset($objColumn->Options['FormGen']) && ($objColumn->Options['FormGen'] == QFormGen::None)) continue;
-			if (isset($objColumn->Options['NoColumn']) && $objColumn->Options['NoColumn']) continue;
-
-			$strCode .= <<<TMPL
-		\$this->col{$objCodeGen->ModelConnectorPropertyName($objColumn)} = \$this->{$strVarName}->CreateNodeColumn("{$objCodeGen->ModelConnectorControlName($objColumn)}", QQN::{$objTable->ClassName}()->{$objCodeGen->ModelConnectorPropertyName($objColumn)});
-
-TMPL;
-
-		}
-
-		foreach ($objTable->ReverseReferenceArray as $objReverseReference) {
-			if ($objReverseReference->Unique) {
-				$strCode .= <<<TMPL
-		\$this->col{$objReverseReference->ObjectDescription} = \$this->{$strVarName}->CreateNodeColumn("{$objCodeGen->ModelConnectorControlName($objReverseReference)}", QQN::{$objTable->ClassName}()->{$objReverseReference->ObjectDescription});
-
-TMPL;
-			}
-		}
-
-		$strCode .= <<<TMPL
-	}
-TMPL;
-
-		return $strCode;
-	}
 
 	protected function GenerateAddActions(QCodeGenBase $objCodeGen, QTable $objTable) {
 		$strVarName = $objCodeGen->DataListVarName($objTable);
