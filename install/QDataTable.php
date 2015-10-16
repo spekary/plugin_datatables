@@ -87,7 +87,9 @@ class QDataTable extends QDataTableBase
 	public function  __construct($objParentObject, $strControlId = null) {
 		parent::__construct($objParentObject, $strControlId);
 		$this->AddPluginJavascriptFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/js/jquery.dataTables.js");
-		$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables.css");
+
+		// Datatables doc says only one css file should be included. Since we are including the jqueryUI file below, we don't use the main css file, as it will conflict.
+		//$this->AddPluginCssFile("datatables", __VENDOR_ASSETS__ . "/datatables/datatables/media/css/jquery.dataTables.css");
 
 		//JQuery UI Themeroller integration
 		//See DataTables documentation for other integrations

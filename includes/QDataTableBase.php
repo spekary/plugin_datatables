@@ -5,10 +5,6 @@
  *
  */
 
-	class QDataTable_RowClickEvent extends QEvent {
-		const EventName = 'QDataTable_RowClickEvent';
-	}
-		
 	class QDataTable_SourceEvent extends QEvent {
 		const EventName = 'QDataTable_SourceEvent';
 	}
@@ -52,7 +48,7 @@
 			$this->JQueryUI = true;
 			$this->UseWrapper = true;	// required since additional dom elements may be inserted above the table
 			
-			// default to not use ajax
+			// default to use ajax
 			$this->UseAjax = false;
 		}
 
@@ -63,14 +59,6 @@
 		}
 
 
-
-		public function AddAction($objEvent, $objAction) {
-			if ($objEvent instanceof QDataTable_RowClickEvent) {
-				$objAction = new QNoScriptAjaxAction($objAction);
-			}
-			parent::AddAction($objEvent, $objAction);
-		}
-			
 		public function SetupAjaxBinding() {
 			$this->blnUseAjax = true;
 			$this->ServerSide = true;
@@ -214,20 +202,12 @@
 		}
 		
 		public function GetControlJavaScript() {
-			// add row click handling
-			// use a temporary ajax action with JsReturnParam to generate the ajax script for us
-			$strJsReturnParam = sprintf("jQuery('#%s').%s().fnGetData(this)", $this->getJqControlId(), $this->getJqSetupFunction()); // 'this' is the row; fnGetData(this) returns the data for the row
-			$action = new QAjaxAction('', 'default', null, $strJsReturnParam);
-			$action->Event = new QDataTable_RowClickEvent();
-			$strJsBody = $action->RenderScript($this);
-
 			$strJS = parent::GetControlJavaScript();
-			$strJS .= ".on('click', 'tbody tr', function () { $strJsBody })\n";
 
             $strJS .= $this->RenderPlugins();
 
 			$strJS .= sprintf('jQuery("#%s_wrapper").css("visibility","visible"); ',
-				$this->getJqControlId());
+				$this->getJqControlId());	// show the table, to prevent data flashing
 
 			return $strJS;
 		}
@@ -384,7 +364,7 @@
 		 * @return QDataTable_CodeGenerator
 		 */
 		public static function GetCodeGenerator($strClass = 'QDataTable') {
-			return new QDataTable_CodeGenerator($strClass);
+			return new QDataTableCodeGenerator($strClass);
 		}
 
 		/**
