@@ -12,7 +12,7 @@ class QDataTableCodeGenerator extends QSimpleTable_CodeGenerator {
 	public function __construct($strControlClassName = 'QDataTable') {
 		$this->strControlClassName = $strControlClassName;
 	}
-	
+
 	/**
 	 * Generate a constructor for a subclass of itself.
 	 *
@@ -49,7 +49,7 @@ TMPL;
 
 		$strCode = <<<TMPL
 
-	protected function {$strVarName}_AddActions() {
+	protected function {$strVarName}_MakeEditable() {
 		\$this->{$strVarName}->AddAction(new QCellClickEvent(), new QAjaxControlAction(\$this, '{$strVarName}_CellClick', null, null, '\$j(this).parent().data("value")'));
 		\$this->{$strVarName}->AddCssClass('hover');
 	}
